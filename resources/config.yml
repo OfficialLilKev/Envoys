@@ -1,19 +1,22 @@
-# Interval in seconds between envoy spawns
+# Time in seconds between envoy spawns
 envoy-spawn-interval: 60
 
-# Time in seconds before an envoy despawns
+# Time in seconds before an envoy despawns automatically
 despawn-timer: 30
 
-# Minimum number of envoys to spawn each interval
+# Minimum and maximum number of envoys to spawn each interval
 min_envoy: 1
+max_envoy: 10
 
-# Maximum number of envoys to spawn each interval
-max_envoy: 5
-
-# Exact envoy spawn locations with world names and coordinates
+# Specific fixed spawn points by world name
 envoy-spawn-locations:
-  spawn1:
-    world: world
-    x: 100
-    y: 65
-    z: 200
+  world:
+    - x: 1
+      y: 70
+      z: 1
+    - x: 2
+      y: 70
+      z: 2
+    - x: 3
+      y: 70
+      z: 3
