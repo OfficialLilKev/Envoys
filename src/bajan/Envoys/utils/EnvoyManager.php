@@ -18,7 +18,7 @@ use bajan\Envoys\Envoys;
 class EnvoyManager {
 
     private Envoys $plugin;
-    private array $spawnLocations;
+    private array $spawnLocations; // Now array of arrays of positions per world
     private int $despawnTimer;
     private int $minEnvoy;
     private int $maxEnvoy;
@@ -36,59 +36,57 @@ class EnvoyManager {
         $this->loadEnvoyData();
     }
 
+    /**
+     * Spawn envoys at configured exact positions.
+     * Returns how many envoys were successfully spawned.
+     */
     public function spawnEnvoys(): int {
         $count = 0;
-        $numberOfEnvoys = mt_rand($this->minEnvoy, $this->maxEnvoy);
+        $numberToSpawn = mt_rand($this->minEnvoy, $this->maxEnvoy);
 
         foreach ($this->spawnLocations as $worldName => $positions) {
             $world = $this->plugin->getServer()->getWorldManager()->getWorldByName($worldName);
             if ($world === null) {
+                $this->plugin->getLogger()->warning("World {$worldName} not found for envoy spawning.");
                 continue;
             }
 
-            // Shuffle spawn points to pick randomly without repeating order
-            $spawnPoints = $positions;
-            shuffle($spawnPoints);
+            foreach ($positions as $pos) {
+                // Stop if we spawned enough
+                if ($count >= $numberToSpawn) {
+                    break 2; // breaks both foreach loops
+                }
 
-            $spawned = 0;
-            foreach ($spawnPoints as $pos) {
-                if ($spawned >= $numberOfEnvoys) break;
-
-                $position = new Position($pos['x'], $pos['y'], $pos['z'], $world);
-
-                // Calculate chunk coords
-                $chunkX = (int)floor($position->getFloorX() / 16);
-                $chunkZ = (int)floor($position->getFloorZ() / 16);
-
-
+                $x = $pos['x'];
+                $y = $pos['y'];
+                $z = $pos['z'];
                 $chunkX = $x >> 4;
                 $chunkZ = $z >> 4;
 
-               // Check if chunk is generated and loaded
-               if (!$world->isChunkGenerated($chunkX, $chunkZ)) {
-            // Chunk not generated, skip spawning here
-               continue;
-            }
+                // Check if chunk is generated
+                if (!$world->isChunkGenerated($chunkX, $chunkZ)) {
+                    $this->plugin->getLogger()->warning("Chunk at {$chunkX}, {$chunkZ} in world {$worldName} is not generated. Skipping envoy spawn.");
+                    continue;
+                }
 
-               if (!$world->isChunkLoaded($chunkX, $chunkZ)) {
-               $world->loadChunk($chunkX, $chunkZ);
-            }
+                // Load chunk if not loaded
+                if (!$world->isChunkLoaded($chunkX, $chunkZ)) {
+                    $world->loadChunk($chunkX, $chunkZ);
+                }
 
-               // Now safe to place blocks
-               if ($world->getBlockAt($x, $y, $z)->getTypeId() === VanillaBlocks::AIR()->getTypeId()) {
-               $this->spawnEnvoy($world, $position);
-               $count++;
-               break;
-            }
+                $position = new Position($x, $y, $z, $world);
 
-                // Check if block is air before spawning
-                if ($world->getBlockAt($position->getFloorX(), $position->getFloorY(), $position->getFloorZ())->getTypeId() === VanillaBlocks::AIR()->getTypeId()) {
+                // Check if block at position is air
+                if ($world->getBlockAt($x, $y, $z)->getTypeId() === VanillaBlocks::AIR()->getTypeId()) {
                     $this->spawnEnvoy($world, $position);
                     $count++;
-                    $spawned++;
+                } else {
+                    $this->plugin->getLogger()->warning("Block at {$x}, {$y}, {$z} in {$worldName} is not air. Cannot spawn envoy.");
                 }
             }
         }
+
+        $this->plugin->getLogger()->info("📦 {$count} envoy crates have been deployed!");
         return $count;
     }
 
