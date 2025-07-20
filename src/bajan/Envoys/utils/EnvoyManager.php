@@ -17,6 +17,44 @@ use bajan\Envoys\Envoys;
 
 class EnvoyManager {
 
+public function spawnEnvoys(): int {
+    $count = 0;
+    $numberOfEnvoys = mt_rand($this->minEnvoy, $this->maxEnvoy);
+    $maxRetries = 10;
+
+    for ($i = 0; $i < $numberOfEnvoys; $i++) {
+        foreach ($this->spawnLocations as $worldName => $bounds) {
+            $world = $this->plugin->getServer()->getWorldManager()->getWorldByName($worldName);
+
+            if ($world === null) {
+                continue;
+            }
+
+            $retries = 0;
+            while ($retries < $maxRetries) {
+                $x = mt_rand($bounds['x-min'], $bounds['x-max']);
+                $y = mt_rand($bounds['y-min'], $bounds['y-max']);
+                $z = mt_rand($bounds['z-min'], $bounds['z-max']);
+                $position = new Position($x, $y, $z, $world);
+
+                if (!$world->isChunkLoaded($x >> 4, $z >> 4)) {
+                    break;
+                }
+
+                if ($world->getBlockAt($x, $y, $z)->getTypeId() === VanillaBlocks::AIR()->getTypeId()) {
+                    $this->spawnEnvoy($world, $position);
+                    $count++;
+                    break;
+                } else {
+                    $retries++;
+                }
+            }
+        }
+    }
+
+    return $count;
+}
+    
     private Envoys $plugin;
     private array $spawnLocations;
     private int $despawnTimer;
