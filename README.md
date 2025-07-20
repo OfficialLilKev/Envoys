@@ -19,7 +19,7 @@ IP: RebirthBE.com
 
 PORT: 19132
 ## Latest Build
-[Get the latest build here](https://poggit.pmmp.io/ci/BajanVlogs/Envoys/Envoys)
+[Get the latest build here](https://poggit.pmmp.io/ci/OfficialLilKev/Envoys/Envoys)
 
 Thank you for supporting my plugin! If you have any suggestions or feature requests, feel free to reach out. Have a great day!
 
