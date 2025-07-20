@@ -1,14 +1,14 @@
-# Define different rewards the envoy can give
-diamond_reward:
-  type: item
-  id: minecraft:diamond
-  amount: 5
-
-money_reward:
-  type: money
-  amount: 100
-
-emerald_reward:
-  type: item
-  id: minecraft:emerald
-  amount: 3
+rewards:
+  - id: "iron_sword"
+    amount: 1
+    custom_name: "§cRebirth Blade"
+    lore:
+      - "§7A blade used by the OG Rebirthers."
+    enchantments:
+      - "sharpness:5"
+      - "fire_aspect:2"
+  - id: "golden_apple"
+    amount: 3
+    custom_name: "§6Enchanted Golden Apple"
+    lore:
+      - "§7Grants extra health."
