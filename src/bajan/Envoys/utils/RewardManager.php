@@ -4,65 +4,69 @@ declare(strict_types=1);
 
 namespace bajan\Envoys\utils;
 
+use pocketmine\item\Item;
 use pocketmine\player\Player;
 use pocketmine\utils\Config;
-use pocketmine\utils\TextFormat as TF;
+use pocketmine\utils\TextFormat;
+use pocketmine\item\StringToItemParser;
+use pocketmine\item\enchantment\StringToEnchantmentParser;
+use pocketmine\item\enchantment\EnchantmentInstance;
+use pocketmine\utils\SingletonTrait;
+use bajan\Envoys\Envoys;
 
-class RewardManager {
+class RewardManager
+{
+    use SingletonTrait;
 
-    private static ?RewardManager $instance = null;
-    private Config $rewardsConfig;
+    private array $rewards;
+    private static string $dataFolder = '';
 
-    private function __construct(string $dataFolder) {
-        $this->rewardsConfig = new Config($dataFolder . "rewards.yml", Config::YAML);
-    }
-
-    public static function initialize(string $dataFolder): void {
-        if (self::$instance === null) {
-            self::$instance = new RewardManager($dataFolder);
+    public function __construct()
+    {
+        if (self::$dataFolder === '') {
+            throw new \RuntimeException('Data folder has not been set.');
         }
+        $config = new Config(self::$dataFolder . "rewards.yml", Config::YAML);
+        $this->rewards = $config->get("rewards", []);
     }
 
-    public static function getInstance(): RewardManager {
-        if (self::$instance === null) {
-            throw new \Exception("RewardManager not initialized");
-        }
-        return self::$instance;
+    public static function initialize(string $dataFolder): void
+    {
+        self::$dataFolder = $dataFolder;
+        self::setInstance(new self());
     }
 
-    public static function giveRandomReward(Player $player): void {
-        $instance = self::getInstance();
-        $rewards = $instance->rewardsConfig->getAll();
+    public function giveReward(Player $player): void
+    {
+        $rewardData = $this->rewards[array_rand($this->rewards)];
 
-        if (empty($rewards)) {
-            $player->sendMessage(TF::RED . "No rewards configured.");
+        $item = StringToItemParser::getInstance()->parse($rewardData['id']);
+        if ($item === null) {
             return;
         }
 
-        $rewardKeys = array_keys($rewards);
-        $chosenKey = $rewardKeys[array_rand($rewardKeys)];
-        $rewardData = $rewards[$chosenKey];
+        $item->setCount($rewardData['amount'] ?? 1);
 
-        // Assuming rewards.yml defines type and amount
-        // Example reward: diamonds: {type: "item", id: "minecraft:diamond", amount: 5}
-        // or money: {type: "money", amount: 100}
-
-        switch ($rewardData["type"] ?? "") {
-            case "money":
-                $amount = (int)($rewardData["amount"] ?? 0);
-                // Add your money handling here
-                $player->sendMessage(TF::GOLD . "You received $" . $amount . "!");
-                // TODO: Integrate with your economy plugin here
-                break;
-
-            case "item":
-                // For simplicity, skipping item parsing here, add if needed
-                $player->sendMessage(TF::GOLD . "You received an item reward!");
-                break;
-
-            default:
-                $player->sendMessage(TF::YELLOW . "You received a reward!");
-                break;
+        if (isset($rewardData['custom_name'])) {
+            $item->setCustomName(TextFormat::colorize($rewardData['custom_name']));
         }
+
+        if (isset($rewardData['lore'])) {
+            $lore = array_map(fn($line) => TextFormat::colorize($line), $rewardData['lore']);
+            $item->setLore($lore);
+        }
+
+        if (isset($rewardData['enchantments'])) {
+            foreach ($rewardData['enchantments'] as $enchantData) {
+                [$enchantName, $level] = explode(":", $enchantData);
+                $enchantment = StringToEnchantmentParser::getInstance()->parse($enchantName);
+                if ($enchantment !== null) {
+                    $item->addEnchantment(new EnchantmentInstance($enchantment, (int) $level));
+                }
+            }
+        }
+
+        $player->getInventory()->addItem($item);
+        $player->sendMessage(TextFormat::GOLD . "You have received a reward!");
     }
 }
