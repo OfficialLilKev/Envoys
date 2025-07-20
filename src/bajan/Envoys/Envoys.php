@@ -13,9 +13,9 @@ use pocketmine\event\world\ChunkUnloadEvent;
 use pocketmine\event\world\WorldUnloadEvent;
 use pocketmine\event\entity\EntityTeleportEvent;
 use pocketmine\utils\TextFormat;
-use bajan\envoys\utils\EnvoyManager;
-use bajan\envoys\utils\EnvoyFloatingText;
-use bajan\envoys\utils\RewardManager;
+use bajan\Envoys\utils\EnvoyManager;
+use bajan\Envoys\utils\EnvoyFloatingText;
+use bajan\Envoys\utils\RewardManager;
 
 class Envoys extends PluginBase implements Listener {
 
