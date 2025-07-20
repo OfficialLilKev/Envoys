@@ -8,12 +8,15 @@ despawn-timer: 20
 min_envoy: 1
 max_envoy: 10
 
-# Define spawn regions by world name
+# Specific fixed spawn points by world name
 envoy-spawn-locations:
   world:
-    x-min: 0
-    x-max: 10
-    y-min: 4
-    y-max: 4
-    z-min: 0
-    z-max: 10
+    - x: 5
+      y: 4
+      z: 5
+    - x: 7
+      y: 4
+      z: 7
+    - x: 3
+      y: 4
+      z: 3
