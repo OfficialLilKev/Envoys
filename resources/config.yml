@@ -1,12 +1,16 @@
+# Time in seconds between envoy spawns
 envoy-spawn-interval: 60
 
+# Time in seconds before an envoy despawns automatically
 despawn-timer: 20
 
+# Minimum and maximum number of envoys to spawn each interval
 min_envoy: 1
 max_envoy: 10
 
+# Define spawn regions by world name
 envoy-spawn-locations:
-  TEST:
+  world:
     x-min: 0
     x-max: 10
     y-min: 4
