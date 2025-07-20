@@ -60,10 +60,16 @@ class EnvoyManager {
                 $chunkX = (int)floor($position->getFloorX() / 16);
                 $chunkZ = (int)floor($position->getFloorZ() / 16);
 
-                // Load chunk if not loaded
-                if (!$world->isChunkLoaded($chunkX, $chunkZ)) {
+
+                  // Generate chunk if not generated
+                  if (!$world->isChunkGenerated($chunkX, $chunkZ)) {
+                    $world->generateChunk($chunkX, $chunkZ);
+                  }
+
+                  // Load chunk if not loaded
+                  if (!$world->isChunkLoaded($chunkX, $chunkZ)) {
                     $world->loadChunk($chunkX, $chunkZ);
-                }
+                  }
 
                 // Check if block is air before spawning
                 if ($world->getBlockAt($position->getFloorX(), $position->getFloorY(), $position->getFloorZ())->getTypeId() === VanillaBlocks::AIR()->getTypeId()) {
