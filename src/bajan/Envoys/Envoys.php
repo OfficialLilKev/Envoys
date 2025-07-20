@@ -1,78 +1,95 @@
 <?php
 
-declare(strict_types=1);
+namespace bajan\envoys;
 
-namespace bajan\Envoys;
-
-use pocketmine\event\Listener;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\ClosureTask;
+use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\event\world\ChunkLoadEvent;
-use pocketmine\event\world\ChunkUnloadEvent;
-use pocketmine\event\world\WorldUnloadEvent;
-use pocketmine\event\entity\EntityTeleportEvent;
-use pocketmine\utils\TextFormat;
-use bajan\Envoys\utils\EnvoyManager;
-use bajan\Envoys\utils\EnvoyFloatingText;
-use bajan\Envoys\utils\RewardManager;
+use pocketmine\block\Chest;
+use pocketmine\math\Vector3;
+use pocketmine\utils\TextFormat as TF;
+use pocketmine\level\Position;
+use pocketmine\Player;
+use pocketmine\scheduler\ClosureTask;
+use pocketmine\tile\Tile;
+use pocketmine\tile\Chest as TileChest;
+use pocketmine\inventory\ChestInventory;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\StringTag;
+use pocketmine\block\Block;
 
 class Envoys extends PluginBase implements Listener {
 
-    private int $interval = 300;
-    private int $despawnTimer = 120;
-    private int $minEnvoy = 1;
-    private int $maxEnvoy = 10;
-    private EnvoyManager $envoyManager;
-    private array $messages = [];
+    /** @var array */
+    private $activeCrates = [];
+
+    /** @var RewardManager */
+    private $rewardManager;
 
     public function onEnable(): void {
+        @mkdir($this->getDataFolder());
         $this->saveDefaultConfig();
-        $this->saveResource("rewards.yml");
-        $this->saveResource("messages.yml");
-
-        $this->messages = yaml_parse_file($this->getDataFolder() . "messages.yml");
-
-        $this->interval = $this->getConfig()->get("envoy-spawn-interval");
-        $this->despawnTimer = $this->getConfig()->get("despawn-timer");
-        $this->minEnvoy = $this->getConfig()->get("min_envoy");
-        $this->maxEnvoy = $this->getConfig()->get("max_envoy");
-        $spawnLocations = $this->getConfig()->get("envoy-spawn-locations", []);
-        $this->envoyManager = new EnvoyManager($this, $spawnLocations, $this->despawnTimer, $this->minEnvoy, $this->maxEnvoy);
-
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-        $this->scheduleEnvoySpawnTask();
-        RewardManager::initialize($this->getDataFolder());
 
-        $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
+        $this->rewardManager = new RewardManager($this);
+
+        $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function (): void {
+            $this->spawnEnvoys();
+        }), $this->getConfig()->get("envoy-spawn-interval", 60) * 20);
     }
 
-    private function scheduleEnvoySpawnTask(): void {
-        $totalTime = $this->interval;
-        $intervals = [
-            3600, 1800, 900, 600, 300, 60, 30, 15, 10, 5, 4, 3, 2, 1
-        ];
+    public function spawnEnvoys(): void {
+        $cfg = $this->getConfig();
 
-        $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$totalTime, $intervals): void {
-            if (in_array($totalTime, $intervals, true)) {
-                $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
+        $locations = $cfg->get("envoy-spawn-locations", []);
+        $min = $cfg->get("min_envoy", 1);
+        $max = $cfg->get("max_envoy", 3);
+
+        $amount = mt_rand($min, $max);
+
+        $count = 0;
+        foreach ($locations as $name => $loc) {
+            if ($count >= $amount) break;
+
+            $x = mt_rand($loc["x-min"], $loc["x-max"]);
+            $y = mt_rand($loc["y-min"], $loc["y-max"]);
+            $z = mt_rand($loc["z-min"], $loc["z-max"]);
+            $level = $this->getServer()->getDefaultLevel();
+            $pos = new Position($x, $y, $z, $level);
+
+            $level->loadChunk($x >> 4, $z >> 4); // ensure chunk is loaded
+
+            $level->setBlock($pos, Block::get(Block::CHEST));
+            $nbt = Tile::createNBT($pos)->setTag(new StringTag("CustomName", "📦 Tap Me!"));
+            $tile = Tile::createTile(Tile::CHEST, $level, $nbt);
+            if ($tile instanceof TileChest) {
+                $tile->setName("Envoy Crate");
             }
 
-            if ($totalTime <= 0) {
-                $count = $this->envoyManager->spawnEnvoys();
-                $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string) $count]));
-                $totalTime = $this->interval;
-            }
-
-            $totalTime--;
-        }), 20);
-    }
-
-    public function getMessage(string $key, array $replacements = []): string {
-        $msg = $this->messages[$key] ?? $key;
-        foreach ($replacements as $search => $replace) {
-            $msg = str_replace("%$search%", $replace, $msg);
+            $this->activeCrates[] = $pos;
+            $count++;
         }
-        return TextFormat::colorize($msg);
+
+        $this->getServer()->broadcastMessage(TF::GOLD . "📦 $count envoy crates have been deployed!");
+    }
+
+    public function onInteract(PlayerInteractEvent $event): void {
+        $block = $event->getBlock();
+        $player = $event->getPlayer();
+
+        foreach ($this->activeCrates as $i => $pos) {
+            if ($block->x === $pos->getX() && $block->y === $pos->getY() && $block->z === $pos->getZ()) {
+                $event->setCancelled(true); // cancel chest opening
+                unset($this->activeCrates[$i]);
+                $block->getLevel()->setBlock($pos, Block::get(Block::AIR));
+                $this->rewardManager->giveReward($player);
+                $player->sendMessage(TF::GREEN . "🎁 You opened an envoy crate!");
+                break;
+            }
+        }
+    }
+
+    public function getRewardManager(): RewardManager {
+        return $this->rewardManager;
     }
 }
