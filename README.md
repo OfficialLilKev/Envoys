@@ -9,7 +9,7 @@ designed for RebirthNetwork, Use at own risk
 - [x] Floating text with a timer counting down till despawm
 - [x] Broadcasting a message starting from 1 hr to 0s indicating Envoys are going to spawn
 - [x] Cool claiming animation/effects when Envoys are idle
-- [ ] Customizable messages
+- [x] Customizable messages
 
 ### Want to see this plugin action?
 
