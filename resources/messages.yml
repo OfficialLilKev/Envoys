@@ -1,3 +1,6 @@
 envoy-starting: "§6⚠️ §eEnvoy event is starting soon!"
 envoy-spawned: "§a📦 %count% envoy crates have been deployed!"
 envoy-ending: "§c❌ Envoy event has ended!"
+envoy-countdown: "Envoys spawning in %time% seconds..."
+envoy-spawned: "📦 %count% envoy crates have been deployed!"
+envoy-starting: "Envoy system is starting..."
