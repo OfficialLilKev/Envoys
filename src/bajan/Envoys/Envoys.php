@@ -50,22 +50,24 @@ class Envoys extends PluginBase implements Listener {
         $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
     }
 
-    private function scheduleEnvoyCountdown(): void {
-    $countdownTimes = [30, 10, 5, 4, 3, 2, 1];
-    $intervalSeconds = 1; // countdown ticks every 1 second
-    $currentIndex = 0;
+private function scheduleEnvoySpawnTask(): void {
+    $totalTime = $this->interval;
+    $countdownTimes = [30, 10, 5, 4, 3, 2, 1]; // seconds at which to broadcast countdown
 
-    $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$currentIndex, $countdownTimes, $intervalSeconds): void {
-        if ($currentIndex < count($countdownTimes)) {
-            $timeLeft = $countdownTimes[$currentIndex];
-            $this->getServer()->broadcastMessage($this->getMessage("envoy-countdown", ["time" => (string)$timeLeft]));
-            $currentIndex++;
-        } else {
-            $count = $this->envoyManager->spawnEnvoys();
-            $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string) $count]));
-            $currentIndex = 0; // reset countdown for next spawn cycle
+    $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$totalTime, $countdownTimes): void {
+        if (in_array($totalTime, $countdownTimes, true)) {
+            // Broadcast countdown message with time left
+            $this->getServer()->broadcastMessage(str_replace("%time%", (string)$totalTime, $this->getMessage("envoy-countdown")));
         }
-    }), $intervalSeconds * 20);
+
+        if ($totalTime <= 0) {
+            $count = $this->envoyManager->spawnEnvoys();
+            $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string)$count]));
+            $totalTime = $this->interval; // Reset countdown
+        }
+
+        $totalTime--;
+    }), 20); // Run every 20 ticks = 1 second
 }
 
     public function getMessage(string $key, array $replacements = []): string {
