@@ -16,6 +16,7 @@ use pocketmine\utils\TextFormat;
 use bajan\Envoys\utils\EnvoyManager;
 use bajan\Envoys\utils\EnvoyFloatingText;
 use bajan\Envoys\utils\RewardManager;
+use bajan\Envoys\listeners\EnvoyListener;
 
 class Envoys extends PluginBase implements Listener {
 
@@ -40,33 +41,32 @@ class Envoys extends PluginBase implements Listener {
         $spawnLocations = $this->getConfig()->get("envoy-spawn-locations", []);
         $this->envoyManager = new EnvoyManager($this, $spawnLocations, $this->despawnTimer, $this->minEnvoy, $this->maxEnvoy);
 
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
-        $this->scheduleEnvoySpawnTask();
+        $this->getServer()->getPluginManager()->registerEvents(new EnvoyListener($this->envoyManager), $this);
+
+        $this->scheduleEnvoyCountdown();
+
         RewardManager::initialize($this->getDataFolder());
 
         $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
     }
 
-    private function scheduleEnvoySpawnTask(): void {
-        $totalTime = $this->interval;
-        $intervals = [
-            3600, 1800, 900, 600, 300, 60, 30, 15, 10, 5, 4, 3, 2, 1
-        ];
+    private function scheduleEnvoyCountdown(): void {
+    $countdownTimes = [30, 10, 5, 4, 3, 2, 1];
+    $intervalSeconds = 1; // countdown ticks every 1 second
+    $currentIndex = 0;
 
-        $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$totalTime, $intervals): void {
-            if (in_array($totalTime, $intervals, true)) {
-                $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
-            }
-
-            if ($totalTime <= 0) {
-                $count = $this->envoyManager->spawnEnvoys();
-                $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string) $count]));
-                $totalTime = $this->interval;
-            }
-
-            $totalTime--;
-        }), 20);
-    }
+    $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$currentIndex, $countdownTimes, $intervalSeconds): void {
+        if ($currentIndex < count($countdownTimes)) {
+            $timeLeft = $countdownTimes[$currentIndex];
+            $this->getServer()->broadcastMessage($this->getMessage("envoy-countdown", ["time" => (string)$timeLeft]));
+            $currentIndex++;
+        } else {
+            $count = $this->envoyManager->spawnEnvoys();
+            $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string) $count]));
+            $currentIndex = 0; // reset countdown for next spawn cycle
+        }
+    }), $intervalSeconds * 20);
+}
 
     public function getMessage(string $key, array $replacements = []): string {
         $msg = $this->messages[$key] ?? $key;
