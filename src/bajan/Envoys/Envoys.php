@@ -7,11 +7,6 @@ namespace bajan\Envoys;
 use pocketmine\event\Listener;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
-use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\event\world\ChunkLoadEvent;
-use pocketmine\event\world\ChunkUnloadEvent;
-use pocketmine\event\world\WorldUnloadEvent;
-use pocketmine\event\entity\EntityTeleportEvent;
 use pocketmine\utils\TextFormat;
 use bajan\Envoys\utils\EnvoyManager;
 use bajan\Envoys\utils\EnvoyFloatingText;
@@ -43,32 +38,32 @@ class Envoys extends PluginBase implements Listener {
 
         $this->getServer()->getPluginManager()->registerEvents(new EnvoyListener($this->envoyManager), $this);
 
-        $this->scheduleEnvoyCountdown();
+        $this->scheduleEnvoySpawnTask();
 
         RewardManager::initialize($this->getDataFolder());
 
         $this->getServer()->broadcastMessage($this->getMessage("envoy-starting"));
     }
 
-private function scheduleEnvoySpawnTask(): void {
-    $totalTime = $this->interval;
-    $countdownTimes = [30, 10, 5, 4, 3, 2, 1]; // seconds at which to broadcast countdown
+    private function scheduleEnvoySpawnTask(): void {
+        $totalTime = $this->interval;
+        $countdownTimes = [30, 10, 5, 4, 3, 2, 1]; // seconds at which to broadcast countdown
 
-    $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$totalTime, $countdownTimes): void {
-        if (in_array($totalTime, $countdownTimes, true)) {
-            // Broadcast countdown message with time left
-            $this->getServer()->broadcastMessage(str_replace("%time%", (string)$totalTime, $this->getMessage("envoy-countdown")));
-        }
+        $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use (&$totalTime, $countdownTimes): void {
+            if (in_array($totalTime, $countdownTimes, true)) {
+                // Broadcast countdown message with time left
+                $this->getServer()->broadcastMessage(str_replace("%time%", (string)$totalTime, $this->getMessage("envoy-countdown")));
+            }
 
-        if ($totalTime <= 0) {
-            $count = $this->envoyManager->spawnEnvoys();
-            $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string)$count]));
-            $totalTime = $this->interval; // Reset countdown
-        }
+            if ($totalTime <= 0) {
+                $count = $this->envoyManager->spawnEnvoys();
+                $this->getServer()->broadcastMessage($this->getMessage("envoy-spawned", ["count" => (string)$count]));
+                $totalTime = $this->interval; // Reset countdown
+            }
 
-        $totalTime--;
-    }), 20); // Run every 20 ticks = 1 second
-}
+            $totalTime--;
+        }), 20); // Run every 20 ticks = 1 second
+    }
 
     public function getMessage(string $key, array $replacements = []): string {
         $msg = $this->messages[$key] ?? $key;
